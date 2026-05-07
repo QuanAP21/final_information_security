@@ -73,9 +73,3 @@ npm run attacker
 4. Return to Bank and refresh.
 5. Balance stays the same.
 6. Transfer history shows forged request status: `BLOCKED (Invalid CSRF Token)`.
-
-## Notes
-
-- This demo uses in-memory data for simplicity.
-- `/transfer` is intentionally vulnerable.
-- `/secure-transfer` validates `csrfToken` against the token stored in the user session.
